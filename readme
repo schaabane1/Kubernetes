@@ -101,7 +101,7 @@ version: "3.8"
 
 services:
   paymybuddy-db:
-    build: ./db
+    image:  safouane95/projet-esgi_paymybuddy-db:latest  
     container_name: paymybuddy-db
     ports:
       - "3306:3306"
@@ -114,7 +114,7 @@ services:
       MYSQL_PASSWORD: paymybuddy
 
   paymybuddy-backend:
-    build: ./backend
+    image: safouane95/paymybuddy-backend  # Utilisation de l'image existante
     container_name: paymybuddy-backend
     ports:
       - "8080:8080"
@@ -127,6 +127,7 @@ services:
 
 volumes:
   db_data:
+
 
 
 
