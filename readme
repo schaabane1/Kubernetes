@@ -89,6 +89,8 @@ COPY initdb /docker-entrypoint-initdb.d/
 docker build -t safouane95/paymybuddy-backend:latest ./backend
 docker build -t safouane95/paymybuddy-db:latest ./db
 
+docker tag paymybuddy-backend safouane95/paymybuddy-backend:latest
+
 docker push safouane95/paymybuddy-backend:latest
 docker push safouane95/paymybuddy-db:latest
 
