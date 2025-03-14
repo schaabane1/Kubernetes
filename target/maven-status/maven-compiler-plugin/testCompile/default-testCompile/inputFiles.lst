@@ -1,0 +1,10 @@
+/root/projet-esgi/src/test/java/com/paymybuddy/paymybuddy/repository/TransactionRepositoryIT.java
+/root/projet-esgi/src/test/java/com/paymybuddy/paymybuddy/service/TransactionServiceTest.java
+/root/projet-esgi/src/test/java/com/paymybuddy/paymybuddy/service/UserServiceTest.java
+/root/projet-esgi/src/test/java/com/paymybuddy/paymybuddy/repository/UserRepositoryIT.java
+/root/projet-esgi/src/test/java/com/paymybuddy/paymybuddy/service/BankAccountServiceTest.java
+/root/projet-esgi/src/test/java/com/paymybuddy/paymybuddy/repository/BankAccountRepositoryIT.java
+/root/projet-esgi/src/test/java/com/paymybuddy/paymybuddy/service/ConnectionServiceTest.java
+/root/projet-esgi/src/test/java/com/paymybuddy/paymybuddy/PayMyBuddyApplicationTests.java
+/root/projet-esgi/src/test/java/com/paymybuddy/paymybuddy/repository/ConnectionRepositoryIT.java
+/root/projet-esgi/src/test/java/com/paymybuddy/paymybuddy/service/UserServiceIT.java
