@@ -1,0 +1,343 @@
+PayMyBuddy - De la Conteneurisation au Déploiement Kubernetes
+
+Contexte
+
+L'entreprise SUN Data Consulting vous a recruté pour moderniser le déploiement de l'application PayMyBuddy, une solution de gestion de transactions financières entre amis.
+
+L'application était initialement monolithique et déployée manuellement. Votre mission est d'adopter les meilleures pratiques DevOps :
+
+Conteneurisation avec Docker
+
+Gestion des services avec Docker Compose
+
+Orchestration avec Kubernetes
+
+Gestion des configurations et secrets
+
+Persistance des données
+
+1. Installation des Prérequis
+
+1.1 Installer Docker
+
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y docker.io
+sudo systemctl enable --now docker
+
+Vérifiez l'installation :
+
+docker --version
+
+1.2 Installer Docker Compose
+
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+Vérifiez l'installation :
+
+docker-compose --version
+
+1.3 Installer Kubernetes (K3s pour un environnement léger)
+
+curl -sfL https://get.k3s.io | sh -
+
+Vérifiez l'installation :
+
+kubectl get nodes
+
+2. Conteneurisation de l'Application
+
+2.1 Dockerfile du Backend (Spring Boot)
+
+root@template:~/projet-esgi# cat backend/Dockerfile
+# Utilisation d’Amazon Corretto 17
+FROM amazoncorretto:17-alpine
+
+# Définir un répertoire de travail
+WORKDIR /app
+
+# Copier le fichier JAR du backend
+COPY target/paymybuddy.jar .
+
+
+# Exposer le port de l’application
+EXPOSE 8080
+
+# Exécuter l’application
+CMD ["java", "-jar", "paymybuddy.jar"]
+
+
+
+2.2 Dockerfile de MySQL
+
+root@template:~/projet-esgi# ^C
+root@template:~/projet-esgi# cat db/Dockerfile
+FROM mysql:8
+
+# Définir les variables d’environnement
+ENV MYSQL_ROOT_PASSWORD=password
+ENV MYSQL_DATABASE=db_paymybuddy
+ENV MYSQL_USER=paymybuddy
+ENV MYSQL_PASSWORD=paymybuddy
+
+# Copier les scripts de création de la base
+COPY initdb /docker-entrypoint-initdb.d/
+
+
+2.3 Construire et Pousser les Images Docker
+
+docker build -t safouane95/paymybuddy-backend:latest ./backend
+docker build -t safouane95/paymybuddy-db:latest ./database
+
+docker push safouane95/paymybuddy-backend:latest
+docker push safouane95/paymybuddy-db:latest
+
+3. Déploiement avec Docker Compose
+
+root@template:~/projet-esgi# cat docker-compose.yml
+version: "3.8"
+
+services:
+  paymybuddy-db:
+    build: ./db
+    container_name: paymybuddy-db
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: db_paymybuddy
+      MYSQL_USER: paymybuddy
+      MYSQL_PASSWORD: paymybuddy
+
+  paymybuddy-backend:
+    build: ./backend
+    container_name: paymybuddy-backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - paymybuddy-db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://paymybuddy-db:3306/db_paymybuddy
+      SPRING_DATASOURCE_USERNAME: paymybuddy
+      SPRING_DATASOURCE_PASSWORD: paymybuddy
+
+volumes:
+  db_data:
+
+
+
+Démarrer l'application :
+
+root@template:~/projet-esgi# docker-compose up -d
+Building paymybuddy-backend
+[+] Building 66.4s (9/9) FINISHED                                                                              docker:default
+ => [internal] load build definition from Dockerfile                                                                     0.0s
+ => => transferring dockerfile: 341B                                                                                     0.0s
+ => [internal] load metadata for docker.io/library/amazoncorretto:17-alpine                                              1.6s
+ => [auth] library/amazoncorretto:pull token for registry-1.docker.io                                                    0.0s
+ => [internal] load .dockerignore                                                                                        0.0s
+ => => transferring context: 2B                                                                                          0.0s
+ => [1/3] FROM docker.io/library/amazoncorretto:17-alpine@sha256:7ce85412211246ff5ce362b59aa5dbdc9093d8bb088da7f7c8b9e  63.8s
+ => => resolve docker.io/library/amazoncorretto:17-alpine@sha256:7ce85412211246ff5ce362b59aa5dbdc9093d8bb088da7f7c8b9ef  0.0s
+ => => sha256:c57f2a61fe3dcc37dbe91f4bff81f2ddcd3cb10bceb39a3f2fd41b89df4f0e57 1.37kB / 1.37kB                           0.0s
+ => => sha256:053f9c68599d35742cd96478cae1087a03d571e938519205188ec043144fc67c 2.40kB / 2.40kB                           0.0s
+ => => sha256:f18232174bc91741fdf3da96d85011092101a032a93a388b79e99e69c2d5c870 3.64MB / 3.64MB                           3.0s
+ => => sha256:584747a5efa75c554a1694422dbb83cd51737c9345280744ae0fb36f23bc0ca5 145.68MB / 145.68MB                      59.8s
+ => => sha256:7ce85412211246ff5ce362b59aa5dbdc9093d8bb088da7f7c8b9ef09a8704cdf 2.67kB / 2.67kB                           0.0s
+ => => extracting sha256:f18232174bc91741fdf3da96d85011092101a032a93a388b79e99e69c2d5c870                                0.1s
+ => => extracting sha256:584747a5efa75c554a1694422dbb83cd51737c9345280744ae0fb36f23bc0ca5                                3.9s
+ => [internal] load build context                                                                                        0.3s
+ => => transferring context: 43.42MB                                                                                     0.2s
+ => [2/3] WORKDIR /app                                                                                                   0.6s
+ => [3/3] COPY target/paymybuddy.jar .                                                                                   0.2s
+ => exporting to image                                                                                                   0.1s
+ => => exporting layers                                                                                                  0.1s
+ => => writing image sha256:644fc37e5a64fc70925191a4f696452d0822dd487e137eae620c3eb3eceadf74                             0.0s
+ => => naming to docker.io/library/projet-esgi_paymybuddy-backend                                                        0.0s
+WARNING: Image for service paymybuddy-backend was built because it did not already exist. To rebuild this image you must use `docker-compose build` or `docker-compose up --build`.
+paymybuddy-db is up-to-date
+Creating paymybuddy-backend ... done
+root@template:~/projet-esgi# docker ps
+CONTAINER ID   IMAGE                            COMMAND                  CREATED          STATUS          PORTS                                                    NAMES
+8daa733f756d   projet-esgi_paymybuddy-backend   "java -jar paymybudd…"   10 seconds ago   Up 10 seconds   0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp              paymybuddy-backend
+0f4869840ac5   projet-esgi_paymybuddy-db        "docker-entrypoint.s…"   2 hours ago      Up 2 hours      0.0.0.0:3306->3306/tcp, [::]:3306->3306/tcp, 33060/tcp   paymybuddy-db
+
+4. Orchestration avec Kubernetes
+
+4.1 Déploiement de MySQL
+
+
+root@template:~/projet-esgi/manifest# cat mysql-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0  # 🔹 Correction ici
+          envFrom:
+            - configMapRef:
+                name: mysql-config
+            - secretRef:
+                name: mysql-secret
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-storage
+          persistentVolumeClaim:
+            claimName: mysql-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  type: NodePort 
+  selector:
+    app: mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
+      nodePort: 30006  
+
+
+Appliquer la configuration :
+
+kubectl apply -f mysql-deployment.yaml
+
+4.2 Déploiement du Backend
+
+root@template:~/projet-esgi/manifest# cat backend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: safouane95/paymybuddy-backend:latest
+          envFrom:
+            - configMapRef:
+                name: backend-config
+          env:
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_ROOT_PASSWORD
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  type: NodePort 
+  selector:
+    app: backend
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080 
+
+
+Appliquer la configuration :
+
+kubectl apply -f backend-deployment.yaml
+
+4.3 Déploiement du ConfigMap
+
+root@template:~/projet-esgi/manifest# cat config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: default
+data:
+  DATABASE_HOST: mysql
+  DATABASE_USER: root
+  SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/paymybuddy
+  SPRING_DATASOURCE_USERNAME: root
+  SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
+4.4 Déploiement du Secret
+
+root@template:~/projet-esgi/manifest# cat secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+type: Opaque
+data:
+  MYSQL_ROOT_PASSWORD: cGFzc3dvcmQ=  # Base64 de "password"
+
+
+5. Vérification et Accès
+
+root@template:~/projet-esgi/manifest# kubectl get pod
+NAME                      READY   STATUS    RESTARTS   AGE
+backend-d895ccf58-75spv   1/1     Running   0          29m
+mysql-6b56d47bf-d8wzf     1/1     Running   0          76m
+
+
+5.2 Accéder au Backend
+
+root@template:~/projet-esgi/manifest# kubectl get svc
+NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+backend      NodePort    10.43.114.234   <none>        8080:30080/TCP   108m
+kubernetes   ClusterIP   10.43.0.1       <none>        443/TCP          147m
+mysql        NodePort    10.43.239.120   <none>        3306:30006/TCP   108m
+root@template:~/projet-esgi/manifest# kubectl get nodes
+NAME       STATUS   ROLES                  AGE    VERSION
+template   Ready    control-plane,master   147m   v1.31.6+k3s1
+root@template:~/projet-esgi/manifest#
+
+curl http://172.180.0.59:30080/
+
+
+6. Conclusion
+
+L'application est maintenant conteneurisée avec Docker
+
+Le déploiement est automatisé avec Docker Compose et Kubernetes
+
+La base de données est persistante et sécurisée
+
+
+
